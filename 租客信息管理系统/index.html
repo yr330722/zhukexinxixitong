@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>租客信息管理系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .login-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        input {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        /* 添加新样式 */
+        .dashboard {
+            display: none;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        #tenantForm {
+            display: none;
+            margin-top: 20px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: inline-block;
+            width: 100px;
+            text-align: right;
+            margin-right: 10px;
+        }
+        .password-container {
+            position: relative;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+        }
+        .error-message {
+            color: red;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+        #exportBtn {
+            margin-left: 10px;
+        }
+    </style>
+    <!-- 添加 SheetJS 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="login-container">
+        <h1>租客信息管理系统</h1>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="用户名" required>
+            <div class="password-container">
+                <input type="password" id="password" placeholder="密码" required>
+                <span class="toggle-password" onclick="togglePassword()">👁️</span>
+            </div>
+            <button type="submit">登录</button>
+        </form>
+        <p id="message"></p>
+        <p>还没有账号? <a href="#" id="registerLink">注册</a></p>
+    </div>
+
+    <div id="registerForm" style="display: none;">
+        <h2>注册新用户</h2>
+        <form id="newUserForm">
+            <input type="text" id="newUsername" placeholder="用户名" required>
+            <input type="password" id="newPassword" placeholder="密码" required>
+            <input type="password" id="confirmPassword" placeholder="确认密码" required>
+            <button type="submit">注册</button>
+        </form>
+        <p id="registerMessage"></p>
+        <p>已有账号? <a href="#" id="loginLink">登录</a></p>
+    </div>
+
+    <div id="dashboard" class="dashboard">
+        <h1>租客信息管理系统 - 仪表板</h1>
+        <h2>租客列表</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>序号</th>
+                    <th>姓名</th>
+                    <th>年龄</th>
+                    <th>性别</th>
+                    <th>身份证号码</th>
+                    <th>联系号码</th>
+                    <th>户籍地址</th>
+                    <th>房间号</th>
+                    <th>入住天数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="tenantList">
+                <!-- 租客数据将通过 JavaScript 动态添加 -->
+            </tbody>
+        </table>
+        <button id="addTenantBtn">添加新租客</button>
+        <button id="exportBtn">导出租客列表</button>
+
+        <div id="tenantForm">
+            <h3 id="formTitle">添加新租客</h3>
+            <form id="tenantInfoForm">
+                <input type="hidden" id="tenantId">
+                <div class="form-group">
+                    <label for="name">姓名:</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="age">年龄:</label>
+                    <input type="number" id="age" required readonly>
+                </div>
+                <div class="form-group">
+                    <label for="gender">性别:</label>
+                    <select id="gender" required readonly>
+                        <option value="">选择性别</option>
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="idCard">身份证号码:</label>
+                    <input type="text" id="idCard" required>
+                    <p class="error-message" id="idCardError"></p>
+                </div>
+                <div class="form-group">
+                    <label for="phone">联系号码:</label>
+                    <input type="tel" id="phone" required>
+                    <p class="error-message" id="phoneError"></p>
+                </div>
+                <div class="form-group">
+                    <label for="address">户籍地址:</label>
+                    <input type="text" id="address" required>
+                </div>
+                <div class="form-group">
+                    <label for="room">房间号:</label>
+                    <input type="text" id="room" required>
+                </div>
+                <div class="form-group">
+                    <label for="checkInDate">入住日期:</label>
+                    <input type="date" id="checkInDate" required>
+                </div>
+                <button type="submit">保存</button>
+                <button type="button" id="cancelBtn">取消</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 初始化租客数据
+        let tenants = [];
+        let currentUser = '';
+
+        // 修改登录逻辑
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            
+            // 这里应该发送到后端进行验证
+            if (localStorage.getItem(username) === password) {
+                currentUser = username;
+                document.getElementById('message').textContent = '登录成功！';
+                document.querySelector('.login-container').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                loadTenants();
+            } else {
+                document.getElementById('message').textContent = '用户名或密码错误，请重试。';
+            }
+        });
+
+        // 修改租客数据加载和保存函数
+        function loadTenants() {
+            tenants = JSON.parse(localStorage.getItem(currentUser + '_tenants')) || [];
+            const tenantList = document.getElementById('tenantList');
+            tenantList.innerHTML = '';
+            tenants.forEach((tenant, index) => {
+                const daysStayed = calculateDaysStayed(tenant.checkInDate);
+                const row = `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${tenant.name}</td>
+                        <td>${tenant.age}</td>
+                        <td>${tenant.gender}</td>
+                        <td>${tenant.idCard}</td>
+                        <td>${tenant.phone}</td>
+                        <td>${tenant.address}</td>
+                        <td>${tenant.room}</td>
+                        <td>${daysStayed}</td>
+                        <td class="action-buttons">
+                            <button onclick="editTenant(${tenant.id})">编辑</button>
+                            <button onclick="deleteTenant(${tenant.id})">删除</button>
+                        </td>
+                    </tr>
+                `;
+                tenantList.innerHTML += row;
+            });
+        }
+
+        function saveTenants() {
+            localStorage.setItem(currentUser + '_tenants', JSON.stringify(tenants));
+        }
+
+        // 保存租客信息
+        document.getElementById('tenantInfoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const idCard = document.getElementById('idCard').value;
+            const phone = document.getElementById('phone').value;
+            let isValid = true;
+
+            if (!validateIdCard(idCard)) {
+                document.getElementById('idCardError').textContent = '请输入有效的身份证号码';
+                isValid = false;
+            } else {
+                document.getElementById('idCardError').textContent = '';
+                const info = getInfoFromIdCard(idCard);
+                if (info) {
+                    document.getElementById('age').value = info.age;
+                    document.getElementById('gender').value = info.gender;
+                }
+            }
+
+            if (!validatePhone(phone)) {
+                document.getElementById('phoneError').textContent = '请输入有效的手机号码';
+                isValid = false;
+            } else {
+                document.getElementById('phoneError').textContent = '';
+            }
+
+            if (!isValid) return;
+
+            const tenantId = document.getElementById('tenantId').value;
+            const tenant = {
+                id: tenantId ? parseInt(tenantId) : Date.now(),
+                name: document.getElementById('name').value,
+                age: parseInt(document.getElementById('age').value),
+                gender: document.getElementById('gender').value,
+                idCard: idCard,
+                phone: phone,
+                address: document.getElementById('address').value,
+                room: document.getElementById('room').value,
+                checkInDate: document.getElementById('checkInDate').value
+            };
+
+            if (tenantId) {
+                // 更新现有租客
+                const index = tenants.findIndex(t => t.id === parseInt(tenantId));
+                tenants[index] = tenant;
+            } else {
+                // 添加新租客
+                tenants.push(tenant);
+            }
+
+            saveTenants(); // 保存到本地存储
+            loadTenants();
+            document.getElementById('tenantForm').style.display = 'none';
+        });
+
+        // 编辑租客信息
+        function editTenant(id) {
+            const tenant = tenants.find(t => t.id === id);
+            if (tenant) {
+                document.getElementById('formTitle').textContent = '编辑租客信息';
+                document.getElementById('tenantId').value = tenant.id;
+                document.getElementById('name').value = tenant.name;
+                document.getElementById('idCard').value = tenant.idCard;
+                const info = getInfoFromIdCard(tenant.idCard);
+                if (info) {
+                    document.getElementById('age').value = info.age;
+                    document.getElementById('gender').value = info.gender;
+                } else {
+                    document.getElementById('age').value = tenant.age;
+                    document.getElementById('gender').value = tenant.gender;
+                }
+                document.getElementById('phone').value = tenant.phone;
+                document.getElementById('address').value = tenant.address;
+                document.getElementById('room').value = tenant.room;
+                document.getElementById('checkInDate').value = tenant.checkInDate;
+                document.getElementById('tenantForm').style.display = 'block';
+            }
+        }
+
+        // 删除租客信息
+        function deleteTenant(id) {
+            if (confirm('确定要删除这个租客吗？')) {
+                tenants = tenants.filter(t => t.id !== id);
+                saveTenants(); // 保存到本地存储
+                loadTenants();
+            }
+        }
+
+        // 密码可见切换功能
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleButton = document.querySelector('.toggle-password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleButton.textContent = '🙈';
+            } else {
+                passwordInput.type = 'password';
+                toggleButton.textContent = '👁️';
+            }
+        }
+
+        // 身份证号码验证
+        function validateIdCard(idCard) {
+            const regex = /(^\d{15}$)|(^\d{18}$)|(^\d{17}(\d|X|x)$)/;
+            return regex.test(idCard);
+        }
+
+        // 手机号码验证
+        function validatePhone(phone) {
+            const regex = /^1[3-9]\d{9}$/;
+            return regex.test(phone);
+        }
+
+        // 计算入住天数
+        function calculateDaysStayed(checkInDate) {
+            const today = new Date();
+            const checkIn = new Date(checkInDate);
+            const timeDiff = today.getTime() - checkIn.getTime();
+            return Math.ceil(timeDiff / (1000 * 3600 * 24));
+        }
+
+        // 根据身份证号码获取性别和年龄
+        function getInfoFromIdCard(idCard) {
+            if (!validateIdCard(idCard)) {
+                return null;
+            }
+
+            const birthday = idCard.substr(6, 8);
+            const year = parseInt(birthday.substr(0, 4));
+            const month = parseInt(birthday.substr(4, 2));
+            const day = parseInt(birthday.substr(6, 2));
+
+            const today = new Date();
+            let age = today.getFullYear() - year;
+            if (today.getMonth() < month - 1 || (today.getMonth() === month - 1 && today.getDate() < day)) {
+                age--;
+            }
+
+            const genderCode = parseInt(idCard.charAt(16));
+            const gender = genderCode % 2 === 0 ? '女' : '男';
+
+            return { age, gender };
+        }
+
+        // 身份证号码输入事件
+        document.getElementById('idCard').addEventListener('input', function() {
+            const idCard = this.value;
+            const info = getInfoFromIdCard(idCard);
+            if (info) {
+                document.getElementById('age').value = info.age;
+                document.getElementById('gender').value = info.gender;
+            }
+        });
+
+        // 添加注册功能
+        document.getElementById('newUserForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            var username = document.getElementById('newUsername').value;
+            var password = document.getElementById('newPassword').value;
+            var confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (password !== confirmPassword) {
+                document.getElementById('registerMessage').textContent = '两次输入的密码不一致';
+                return;
+            }
+            
+            if (localStorage.getItem(username)) {
+                document.getElementById('registerMessage').textContent = '用户名已存在';
+                return;
+            }
+            
+            localStorage.setItem(username, password);
+            localStorage.setItem(username + '_tenants', '[]');
+            document.getElementById('registerMessage').textContent = '注册成功，请登录';
+            showLoginForm();
+        });
+
+        // 显示注册表单
+        document.getElementById('registerLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelector('.login-container').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+        });
+
+        // 显示登录表单
+        document.getElementById('loginLink').addEventListener('click', showLoginForm);
+
+        function showLoginForm() {
+            document.querySelector('.login-container').style.display = 'block';
+            document.getElementById('registerForm').style.display = 'none';
+        }
+
+        // 添加新租客按钮事件
+        document.getElementById('addTenantBtn').addEventListener('click', function() {
+            document.getElementById('formTitle').textContent = '添加新租客';
+            document.getElementById('tenantInfoForm').reset();
+            document.getElementById('tenantId').value = '';
+            document.getElementById('tenantForm').style.display = 'block';
+        });
+
+        // 取消按钮事件
+        document.getElementById('cancelBtn').addEventListener('click', function() {
+            document.getElementById('tenantForm').style.display = 'none';
+        });
+
+        // 添加导出租客列表功能
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+            
+            // 准备数据
+            const data = [
+                ['序号', '姓名', '年龄', '性别', '身份证号码', '联系号码', '户籍地址', '房间号', '入住天数']
+            ];
+            
+            tenants.forEach((tenant, index) => {
+                const daysStayed = calculateDaysStayed(tenant.checkInDate);
+                data.push([
+                    index + 1,
+                    tenant.name,
+                    tenant.age,
+                    tenant.gender,
+                    tenant.idCard,
+                    tenant.phone,
+                    tenant.address,
+                    tenant.room,
+                    daysStayed
+                ]);
+            });
+            
+            // 创建工作表
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            
+            // 将工作表添加到工作簿
+            XLSX.utils.book_append_sheet(wb, ws, "租客列表");
+            
+            // 生成 Excel 文件并下载
+            XLSX.writeFile(wb, "租客列表.xlsx");
+        });
+    </script>
+</body>
+</html>
